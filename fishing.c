@@ -7,6 +7,7 @@
 
 #include <termios.h>    // for struct termios   for getche() from conio.h
 #include <unistd.h>     // for STDIN_FILENO     for getche() from conio.h
+#include <sys/wait.h>   // for waitpid()
 
 
 // - - - SETTING GLOBAL VARIABLES
@@ -96,7 +97,7 @@ int main() {
 
     GAME_RUNNING = true;
     while (GAME_RUNNING) {
-        printf("> MAIN loop is started in %d time\n", ++AAA);
+        printf("\n\n> MAIN loop is started in %d time\n", ++AAA);
 
         // fillGameMap(gameMap, fishes, boat);
         // drawGame(gameMap, fishes, boat);
@@ -283,25 +284,28 @@ int getUserInput(struct timespec ts) {
     printf("> getUserInput() started for %d time\n", B);
 
     // id of child process that cathes the user keydown
-    int catcherId, keyPressedNumber = 0;
+    int catcherId, childExitStatus, keyPressedNumber = 0;
     if ((catcherId = fork()) < 0) {}    /*well, it can catch an error~*/
     if (catcherId == 0) {               /* child process */
         printf("- Waiting for input character: ");
         // gets the key pressed by user
         keyPressedNumber = getche();
         printf("\nCHILD: Key is: %d\n", keyPressedNumber);
-        while(true) {}
+        exit(keyPressedNumber);
     }
     else {                              /* parent process */
         nanosleep(&ts, &ts);
-        signal(SIGINT, handleSignalFromChild);
-        printf("\nFATHER: Key is: %d\n", keyPressedNumber);
+        waitpid(catcherId, &childExitStatus, WNOHANG);
+        // sets child's exit status as keyPressedNumber
+        // ..if exited normally, otherwise key value is set to 0
+        keyPressedNumber = WIFEXITED(childExitStatus) ? WEXITSTATUS(childExitStatus) : 0;
+        printf("FATHER: Key is: %d\n", keyPressedNumber);
         // kills child process
         kill(catcherId, SIGQUIT);
-        printf("\nFATHER: Killed the child\n");
+        printf("FATHER: Killed the child\n");
     }
 
-    printf("\nrootProc: Key is: %d\n", keyPressedNumber);
+    printf("rootProc: Key is: %d\n", keyPressedNumber);
 
     return keyPressedNumber;
 }
