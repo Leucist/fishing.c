@@ -18,6 +18,8 @@ const int HEIGHT = 31;
 // and its components separetely
 const int SKY_HEIGHT = 1;
 const int START_AMOUNT_FISH = 3;
+// Game controls instruction
+char INSTRUCTION[] = "Press the 'A' and 'D' buttons to move the\n\tboat left and right accordingly. Press 'E'\n\tto exit.";
 
 int AAA = 0, B = 0;
 // - - - INITIALIZING STRUCTURES
@@ -91,34 +93,26 @@ int main() {
     // declares ts timespec structure for nanosleep()
     // ..and sets the frame rate (tv_nsec value)
     struct timespec ts;
-    ts.tv_sec = 1;          // 0 s
+    ts.tv_sec = 0;          // 0 s
     ts.tv_nsec = 300000000; // 300 ms
 
 
     GAME_RUNNING = true;
     while (GAME_RUNNING) {
-        printf("\n\n> MAIN loop is started in %d time\n", ++AAA);
 
-        // fillGameMap(gameMap, fishes, boat);
-        // drawGame(gameMap, fishes, boat);
+        fillGameMap(gameMap, fishes, boat);
+        drawGame(gameMap, fishes, boat);
 
         // gets number of the key user pressed, 0 if none
         keyPressedNumber = getUserInput(ts);
-        printf("\nMAIN: Key pressed num: %d\n", keyPressedNumber);
-        if (keyPressedNumber == 101) {
-            printf("E was pressed\n");
-            exit(0);
-        }
-        nanosleep(&ts, &ts);
-        nanosleep(&ts, &ts);
 
         // reacts accordingly to the input provided by the user
         handleUserInput(keyPressedNumber, boat);
 
         // moves boat (if boat.obj.direction != 0)
-        // moveBoat(boat);
+        moveBoat(boat);
         // moves each fish
-        // moveFish(fishes);
+        moveFish(fishes);
 
         /*boat moves left-> gameMap[0][boat.posX-1]='︵' and
          *                  gameMap[0][boat.posX+boat.length+1]='‿'*/
@@ -155,11 +149,21 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
 void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat) {
     // clears the console
     printf("\e[1;1H\e[2J");
+    // prints INSTRUCTION
+    printf("\t%s\n", INSTRUCTION);
 
-    printf("drawGame is started in %d time\n", AAA++);
-    for (int i=0; i < START_AMOUNT_FISH; i++) {
-        printf("Fish %d posX: %d, direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
-    }
+    // printf("\n\t");  /* splits the instruction into equal lines (==WIDTH) */
+    // for (int i = 0; i < strlen(INSTRUCTION); i++) {
+    //     if ((i + 1) % WIDTH == 0)
+    //         printf("\n\t");
+    //     printf("%c", INSTRUCTION[i]);
+    // }
+
+    // printf("drawGame is started in %d time\n", AAA++);
+    // for (int i=0; i < START_AMOUNT_FISH; i++) {
+    //     printf("Fish %d posX: %d, direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
+    // }
+
     int fishNum = 0;
     // skips 4 lines as an indent
     printf("\n\n\n\n");
@@ -263,12 +267,13 @@ void handleUserInput(int keyPressedNumber, struct Boat boat) {
             boat.obj.direction = 1;
             break;
         case 101:                       /* 'e' key */
+            // clears the console
             printf("\e[1;1H\e[2J");
-            printf("LOL");
-            printf("GAME_RUNNING = %d\n", GAME_RUNNING);
+            printf("'E' button was pressed. Exiting.\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
+            GAME_RUNNING = false;
             break;
-        // default:                        /* None or other key's pressed */
-        //     boat.obj.direction = 0;     /* idle */
+        default:                        /* None or other key was pressed */
+            boat.obj.direction = 0;     /* idle */
     }
 }
 
@@ -280,32 +285,27 @@ void endGame() {
 }
 
 int getUserInput(struct timespec ts) {
-    B++;
-    printf("> getUserInput() started for %d time\n", B);
+    // B++;
+    // printf("> getUserInput() started for %d time\n", B);
 
     // id of child process that cathes the user keydown
     int catcherId, childExitStatus, keyPressedNumber = 0;
     if ((catcherId = fork()) < 0) {}    /*well, it can catch an error~*/
     if (catcherId == 0) {               /* child process */
-        printf("- Waiting for input character: ");
         // gets the key pressed by user
         keyPressedNumber = getche();
-        printf("\nCHILD: Key is: %d\n", keyPressedNumber);
         exit(keyPressedNumber);
     }
     else {                              /* parent process */
         nanosleep(&ts, &ts);
+        // checks if child process executed and gather related data
         waitpid(catcherId, &childExitStatus, WNOHANG);
         // sets child's exit status as keyPressedNumber
         // ..if exited normally, otherwise key value is set to 0
         keyPressedNumber = WIFEXITED(childExitStatus) ? WEXITSTATUS(childExitStatus) : 0;
-        printf("FATHER: Key is: %d\n", keyPressedNumber);
-        // kills child process
+        // kills child process (even if it already exited)
         kill(catcherId, SIGQUIT);
-        printf("FATHER: Killed the child\n");
     }
-
-    printf("rootProc: Key is: %d\n", keyPressedNumber);
 
     return keyPressedNumber;
 }
