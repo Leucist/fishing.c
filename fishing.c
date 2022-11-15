@@ -24,11 +24,12 @@ char INSTRUCTION[] = "Press the 'A' and 'D' buttons to move the\n\tboat left and
 int AAA = 0, B = 0;
 // - - - INITIALIZING STRUCTURES
 struct GameObject {
-    unsigned int length : 2;
+    // unsigned int length : 2;
     int posX,
         posY,
         speed,
-        direction;
+        direction,
+        length;
     char image[3];
 };
 struct Fish {
@@ -45,12 +46,10 @@ struct Boat {
 // declaring functions
 void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
 void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
-void endGame();
-void moveBoat(struct Boat boat);
+void moveBoat(struct Boat*);
 void moveFish(struct Fish fishes[]);
 void turnFish(struct Fish fishes[], int);
-void handleUserInput(int, struct Boat);
-void handleSignalFromChild();
+void handleUserInput(int, struct Boat*);
 int getUserInput(struct timespec);
 int getche();
 
@@ -67,6 +66,7 @@ int main() {
     // creates boat and sets the x index of the rounded centre minus 1 of the game area as its x pos.
     struct Boat boat;
     boat.isFishing = false;
+    boat.obj.speed = 1;
     boat.obj.length = 3;
     boat.obj.posX = WIDTH / 2 - 1;
     strcpy(boat.obj.image, "\\_/");
@@ -107,10 +107,10 @@ int main() {
         keyPressedNumber = getUserInput(ts);
 
         // reacts accordingly to the input provided by the user
-        handleUserInput(keyPressedNumber, boat);
+        handleUserInput(keyPressedNumber, &boat);
 
         // moves boat (if boat.obj.direction != 0)
-        moveBoat(boat);
+        moveBoat(&boat);
         // moves each fish
         moveFish(fishes);
 
@@ -159,7 +159,8 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
     //     printf("%c", INSTRUCTION[i]);
     // }
 
-    // printf("drawGame is started in %d time\n", AAA++);
+    printf("drawGame is started in %d time\n", AAA++);
+    printf("\tBoat posX: %d\n\tDirection: %d", boat.obj.posX, boat.obj.direction);
     // for (int i=0; i < START_AMOUNT_FISH; i++) {
     //     printf("Fish %d posX: %d, direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
     // }
@@ -245,26 +246,33 @@ void moveFish(struct Fish fishes[]) {
     }
 }
 
-void moveBoat(struct Boat boat) {
+void moveBoat(struct Boat *boat) {
+    int *posX       =   &boat -> obj.posX,
+        *speed      =   &boat -> obj.speed,
+        *length     =   &boat -> obj.length,
+        *direction  =   &boat -> obj.direction;
     // sets new position of the boat
-    boat.obj.posX += boat.obj.direction * boat.obj.speed;
+    *posX += *direction * *speed;
     // corrects boat position
-    if (boat.obj.posX < 0) {
-        boat.obj.posX = 0;
+    if (*posX < 0) {
+        *posX = 0;
     }
-    else if (boat.obj.posX > WIDTH - boat.obj.length) {
-        boat.obj.posX = WIDTH - boat.obj.length;
+    else if (*posX > WIDTH - *length) {
+        *posX = WIDTH - *length;
     }
 }
 
-void handleUserInput(int keyPressedNumber, struct Boat boat) {
+void handleUserInput(int keyPressedNumber, struct Boat *boat) {
     // printf("> handleUserInput() started\n\n\n");
+    // struct GameObject *obj = &boat;
+    int *direction = &boat -> obj.direction;
+    // obj = &boat.direction
     switch (keyPressedNumber) {
         case 97:                        /* 'a' key */
-            boat.obj.direction = -1;
+            *direction = -1;
             break;
         case 100:                       /* 'd' key */
-            boat.obj.direction = 1;
+            *direction = 1;
             break;
         case 101:                       /* 'e' key */
             // clears the console
@@ -273,15 +281,8 @@ void handleUserInput(int keyPressedNumber, struct Boat boat) {
             GAME_RUNNING = false;
             break;
         default:                        /* None or other key was pressed */
-            boat.obj.direction = 0;     /* idle */
+            *direction = 0;     /* idle */
     }
-}
-
-void endGame() {
-    // clears the console
-    printf("\e[1;1H\e[2J");
-    printf("'E' button was pressed. Exiting.\nThank you for playing my game :)\n\n");
-    exit(1);
 }
 
 int getUserInput(struct timespec ts) {
