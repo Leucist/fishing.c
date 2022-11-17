@@ -143,6 +143,16 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
         for (int j=0; j < fishes[i].obj.length; j++)
             gameMap[fishes[i].obj.posY][fishes[i].obj.posX + j] = 3;    /*3 stands for fish*/
     }
+
+    if (boat.obj.direction == 1 && boat.obj.posX < WIDTH - boat.obj.length) {
+        gameMap[0][boat.obj.posX+boat.obj.length] = 6;
+        // assumming that posX can't be zero:
+        gameMap[0][boat.obj.posX-1] = 7;
+    }
+    else if (boat.obj.direction == -1 && boat.obj.posX > 0) {
+        gameMap[0][boat.obj.posX+boat.obj.length] = 7;
+        gameMap[0][boat.obj.posX-1] = 6;
+    }
 }
 
 // - - - draws the game screen
@@ -208,6 +218,15 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
                 // fishing line
                 case 5:
                     printf("|");
+                    break;
+
+                // wave before boat
+                case 6:
+                    printf("‿");
+                    break;
+                // wave after boat
+                case 7:
+                    printf("‿");
                     break;
             }
         }
