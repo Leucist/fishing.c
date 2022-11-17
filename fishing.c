@@ -39,6 +39,8 @@ struct Fish {
 
 struct Boat {
     struct GameObject obj;
+    int hookPos[2];
+    int hookPos[1] = obj.posX + 1;
     bool isFishing;
 };
 
@@ -66,6 +68,8 @@ int main() {
     // creates boat and sets the x index of the rounded centre minus 1 of the game area as its x pos.
     struct Boat boat;
     boat.isFishing = false;
+    boat.hookPos[0] = 0;        // posY
+    // boat.hookPos[1] = 0;        // posX
     boat.obj.speed = 1;
     boat.obj.length = 3;
     boat.obj.posX = WIDTH / 2 - 1;
@@ -284,20 +288,36 @@ void moveBoat(struct Boat *boat) {
 void handleUserInput(int keyPressedNumber, struct Boat *boat) {
     // printf("> handleUserInput() started\n\n\n");
     // struct GameObject *obj = &boat;
-    int *direction = &boat -> obj.direction;
-    // obj = &boat.direction
+    int *direction  =   &boat -> obj.direction;
+    // int *hookPos    =   &boat -> hookPos;
     switch (keyPressedNumber) {
         case 97:                        /* 'a' key */
-            *direction = -1;
+            if (!(&boat->isFishing)) {
+                *direction = -1;
+            }
             break;
         case 100:                       /* 'd' key */
-            *direction = 1;
+            if (!(&boat->isFishing)) {
+                *direction = 1;
+            }
             break;
         case 101:                       /* 'e' key */
             // clears the console
             printf("\e[1;1H\e[2J");
             printf("'E' button was pressed. Exiting.\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
             GAME_RUNNING = false;
+            break;
+        case 102:
+            *direction = 0;
+            // if hook hasn't been thrown yet
+            if (&boat->hookPos[0] == 0) {
+                &boat->isFishing        = true;
+                &boat->hookDirection    = 1;    // down
+            }
+            // if hook is already in the water
+            else {
+
+            }
             break;
         default:                        /* None or other key was pressed */
             *direction = 0;     /* idle */
