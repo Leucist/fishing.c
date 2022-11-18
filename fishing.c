@@ -39,8 +39,9 @@ struct Fish {
 
 struct Boat {
     struct GameObject obj;
-    int hookPos[2];
-    int hookPos[1] = obj.posX + 1;
+    int hookPosY,
+        hookSpeed,
+        hookDirection;
     bool isFishing;
 };
 
@@ -48,6 +49,7 @@ struct Boat {
 // declaring functions
 void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
 void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
+void moveHook(struct Boat*);
 void moveBoat(struct Boat*);
 void moveFish(struct Fish fishes[]);
 void turnFish(struct Fish fishes[], int);
@@ -67,11 +69,12 @@ int main() {
 
     // creates boat and sets the x index of the rounded centre minus 1 of the game area as its x pos.
     struct Boat boat;
-    boat.isFishing = false;
-    boat.hookPos[0] = 0;        // posY
-    // boat.hookPos[1] = 0;        // posX
-    boat.obj.speed = 1;
-    boat.obj.length = 3;
+    boat.isFishing      = false;
+    boat.hookPosY       = 0;
+    boat.hookSpeed      = 1;
+    boat.hookDirection  = 0;
+    boat.obj.speed      = 1;
+    boat.obj.length     = 3;
     boat.obj.posX = WIDTH / 2 - 1;
     strcpy(boat.obj.image, "\\_/");
 
@@ -113,6 +116,9 @@ int main() {
         // reacts accordingly to the input provided by the user
         handleUserInput(keyPressedNumber, &boat);
 
+        // fish if fishing :)
+        if (boat.isFishing) moveHook(&boat);
+
         // moves boat (if boat.obj.direction != 0)
         moveBoat(&boat);
         // moves each fish
@@ -148,6 +154,7 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
             gameMap[fishes[i].obj.posY][fishes[i].obj.posX + j] = 3;    /*3 stands for fish*/
     }
 
+    // Add waves when boat is moving
     if (boat.obj.direction == 1 && boat.obj.posX < WIDTH - boat.obj.length) {
         gameMap[0][boat.obj.posX+boat.obj.length] = 6;
         // assumming that posX can't be zero:
@@ -156,6 +163,16 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
     else if (boat.obj.direction == -1 && boat.obj.posX > 0) {
         gameMap[0][boat.obj.posX+boat.obj.length] = 7;
         gameMap[0][boat.obj.posX-1] = 6;
+    }
+
+    // Add hook and line if fishing
+    if (boat.hookPosY != 0) {
+        int hookPosX = boat.obj.posX+1;
+        // adds line above the hook
+        for (int y = 1; y < boat.hookPosY; y++)
+            gameMap[y][hookPosX] = 5;
+        // adds hook itself
+        gameMap[boat.hookPosY][hookPosX] = 4;
     }
 }
 
@@ -269,6 +286,25 @@ void moveFish(struct Fish fishes[]) {
     }
 }
 
+void moveHook(struct Boat *boat) {
+    int *hookPosY       = &boat -> hookPosY,
+        *hookSpeed      = &boat -> hookSpeed,
+        *hookDirection  = &boat -> hookDirection;
+    bool *isFishing     = &boat -> isFishing;
+    // moves the hook
+    *hookPosY += (*hookSpeed) * (*hookDirection);
+    // correct hook's position(+)
+    if (*hookPosY >= (HEIGHT - 1)) {
+        *hookPosY = HEIGHT - 1;
+        *hookDirection = -1;
+    }
+    else if (*hookPosY <= 0) {
+        *isFishing = false;
+        *hookPosY = 0;
+        *hookDirection = 0;     /* redundant operation, but just in case */
+    }
+}
+
 void moveBoat(struct Boat *boat) {
     int *posX       =   &boat -> obj.posX,
         *speed      =   &boat -> obj.speed,
@@ -286,18 +322,17 @@ void moveBoat(struct Boat *boat) {
 }
 
 void handleUserInput(int keyPressedNumber, struct Boat *boat) {
-    // printf("> handleUserInput() started\n\n\n");
-    // struct GameObject *obj = &boat;
-    int *direction  =   &boat -> obj.direction;
-    // int *hookPos    =   &boat -> hookPos;
+    int *direction      =   &boat -> obj.direction,
+        *hookDirection  =   &boat -> hookDirection;
+    bool *isFishing     =   &boat -> isFishing;
     switch (keyPressedNumber) {
         case 97:                        /* 'a' key */
-            if (!(&boat->isFishing)) {
+            if (!(boat->isFishing)) {
                 *direction = -1;
             }
             break;
         case 100:                       /* 'd' key */
-            if (!(&boat->isFishing)) {
+            if (!(boat->isFishing)) {
                 *direction = 1;
             }
             break;
@@ -307,16 +342,16 @@ void handleUserInput(int keyPressedNumber, struct Boat *boat) {
             printf("'E' button was pressed. Exiting.\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
             GAME_RUNNING = false;
             break;
-        case 102:
+        case 102:                       /* 'f' key */
             *direction = 0;
             // if hook hasn't been thrown yet
-            if (&boat->hookPos[0] == 0) {
-                &boat->isFishing        = true;
-                &boat->hookDirection    = 1;    // down
+            if (boat->hookPosY == 0) {
+                *isFishing        = true;
+                *hookDirection    = 1;      // down
             }
             // if hook is already in the water
             else {
-
+                *hookDirection    = -1;     // up
             }
             break;
         default:                        /* None or other key was pressed */
