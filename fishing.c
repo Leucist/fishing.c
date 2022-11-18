@@ -34,7 +34,7 @@ struct GameObject {
 };
 struct Fish {
     struct GameObject obj;
-    bool isCatched;
+    bool isCaught;
 };
 
 struct Boat {
@@ -42,7 +42,8 @@ struct Boat {
     int hookPosY,
         hookSpeed,
         hookDirection;
-    bool isFishing;
+    bool isFishing,
+         hookDragFish;
 };
 
 
@@ -54,6 +55,7 @@ void moveBoat(struct Boat*);
 void moveFish(struct Fish fishes[]);
 void turnFish(struct Fish fishes[], int);
 void handleUserInput(int, struct Boat*);
+void checkFishCaught(struct Boat*, struct Fish fishes[]);
 int getUserInput(struct timespec);
 int getche();
 
@@ -70,9 +72,10 @@ int main() {
     // creates boat and sets the x index of the rounded centre minus 1 of the game area as its x pos.
     struct Boat boat;
     boat.isFishing      = false;
+    boat.hookDragFish   = false;    /* doesn't drag any fish */
+    boat.hookDirection  = 0;    /* hook doesn't move */
     boat.hookPosY       = 0;
     boat.hookSpeed      = 1;
-    boat.hookDirection  = 0;
     boat.obj.speed      = 1;
     boat.obj.length     = 3;
     boat.obj.posX = WIDTH / 2 - 1;
@@ -82,7 +85,7 @@ int main() {
     struct Fish fishes[START_AMOUNT_FISH];
     for (int i=0; i < START_AMOUNT_FISH; i++) {
         // const class values
-        fishes[i].isCatched = false;
+        fishes[i].isCaught = false;
         fishes[i].obj.length = 3;
         fishes[i].obj.speed = 1;
         // random values
@@ -106,7 +109,6 @@ int main() {
 
     GAME_RUNNING = true;
     while (GAME_RUNNING) {
-
         fillGameMap(gameMap, fishes, boat);
         drawGame(gameMap, fishes, boat);
 
@@ -116,16 +118,16 @@ int main() {
         // reacts accordingly to the input provided by the user
         handleUserInput(keyPressedNumber, &boat);
 
-        // fish if fishing :)
-        if (boat.isFishing) moveHook(&boat);
-
         // moves boat (if boat.obj.direction != 0)
         moveBoat(&boat);
         // moves each fish
         moveFish(fishes);
 
-        /*boat moves left-> gameMap[0][boat.posX-1]='︵' and
-         *                  gameMap[0][boat.posX+boat.length+1]='‿'*/
+        // fish if fishing :)
+        if (boat.isFishing) {
+            moveHook(&boat);
+            checkFishCaught(&boat, fishes);
+        }
     }
 
     return 0;
@@ -150,8 +152,11 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
 
     // 4. Add fishes
     for (int i=0; i < START_AMOUNT_FISH; i++) {
-        for (int j=0; j < fishes[i].obj.length; j++)
-            gameMap[fishes[i].obj.posY][fishes[i].obj.posX + j] = 3;    /*3 stands for fish*/
+        // if fish wasn't caught
+        if (!fishes[i].isCaught) {
+            for (int j=0; j < fishes[i].obj.length; j++)
+                gameMap[fishes[i].obj.posY][fishes[i].obj.posX + j] = 3;    /*3 stands for fish*/
+        }
     }
 
     // Add waves when boat is moving
@@ -191,7 +196,9 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
     // }
 
     printf("drawGame is started in %d time\n", AAA++);
-    printf("\tBoat posX: %d\n\tDirection: %d", boat.obj.posX, boat.obj.direction);
+    for (int i=0; i < START_AMOUNT_FISH; i++) {
+        printf("\tFish #%d\t posX: %d, Direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
+    }
     // for (int i=0; i < START_AMOUNT_FISH; i++) {
     //     printf("Fish %d posX: %d, direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
     // }
@@ -234,7 +241,10 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
                     break;
                 // hook
                 case 4:
-                    printf("ʖ");
+                    if (!boat.hookDragFish)
+                        printf("ʖ");
+                    else
+                        printf("&");
                     break;
                 // fishing line
                 case 5:
@@ -257,29 +267,68 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
     printf("\n\n\n\n");
 }
 
+void checkFishCaught(struct Boat *boat, struct Fish fishes[]) {
+    int *hookPosY       = &boat -> hookPosY,
+        *hookSpeed      = &boat -> hookSpeed,
+        *hookDirection  = &boat -> hookDirection;
+    bool *hookDragFish  = &boat -> hookDragFish;
+    for (int i=0; i < START_AMOUNT_FISH; i++) {
+        if (fishes[i].isCaught) continue;
+        // if fish faces the
+        // <left, right, into, under> - fishPos : hookPos
+
+        // if fish is above the hook
+        // if (fishes[i].obj.posY < boat->hookPosY) {
+        //     if (fishes[i].obj.posX + fishes[i].obj.length == boat -> obj.posX+1 ||
+        //     fishes[i].obj.posX + fishes[i].obj.length-2 == boat -> obj.posX ||
+        //     fishes[i].obj.posX == boat->obj.posX+1 ||
+        //     fishes[i].obj.posX == boat->obj.posX) {
+        //         turnFish(fishes, i);
+        //     }
+        // }
+        // if fish is on the same y as hook
+        if (fishes[i].obj.posY == boat->hookPosY) {
+            // if fish collides with the hook
+            for (int l = 0; l < fishes[i].obj.length; l++) {
+                if (fishes[i].obj.posX + l == boat->obj.posX+1) {
+                    fishes[i].isCaught = true;
+                    fishes[i].obj.direction = 0;
+                    *hookDragFish = true;
+                    *hookDirection = -1;
+                    // *hookPosY += *hookSpeed;
+                }
+            }
+        }
+    }
+}
+
 // turns around the fish with the index i
-void turnFish(struct Fish fishes[], int index) {
-    if (fishes[index].obj.direction == 1) {
-        fishes[index].obj.posX = WIDTH - fishes[index].obj.length;
-        fishes[index].obj.direction = -1;
-        strcpy(fishes[index].obj.image, "<><");
+void turnFish(struct Fish fishes[], int id) {
+    if (fishes[id].obj.direction == 1) {
+        fishes[id].obj.direction = -1;
+        strcpy(fishes[id].obj.image, "<><");
     }
     else {
-        fishes[index].obj.posX = 0;
-        fishes[index].obj.direction = 1;
-        strcpy(fishes[index].obj.image, "><>");
+        fishes[id].obj.direction = 1;
+        strcpy(fishes[id].obj.image, "><>");
     }
 }
 
 void moveFish(struct Fish fishes[]) {
     for (int i=0; i < START_AMOUNT_FISH; i++) {
-        // move fishes that haven't been catched yet
-        if (!fishes[i].isCatched) {
+        // move fishes that haven't been caught yet
+        if (!fishes[i].isCaught) {
             fishes[i].obj.posX += fishes[i].obj.direction * \
                                     fishes[i].obj.speed;
             // if fish crosses one of the borders
-            if (fishes[i].obj.posX < 0 || fishes[i].obj.posX > WIDTH - fishes[i].obj.length - 1) {
+            if (fishes[i].obj.posX < 0) {
                 // turns fish and corrects its x position
+                fishes[i].obj.posX = 0;
+                turnFish(fishes, i);
+            }
+            else if (fishes[i].obj.posX > WIDTH - fishes[i].obj.length - 1) {
+                // turns fish and corrects its x position
+                fishes[i].obj.posX = WIDTH - fishes[i].obj.length;
                 turnFish(fishes, i);
             }
         }
@@ -290,7 +339,8 @@ void moveHook(struct Boat *boat) {
     int *hookPosY       = &boat -> hookPosY,
         *hookSpeed      = &boat -> hookSpeed,
         *hookDirection  = &boat -> hookDirection;
-    bool *isFishing     = &boat -> isFishing;
+    bool *isFishing     = &boat -> isFishing,
+         *hookDragFish  = &boat -> hookDragFish;
     // moves the hook
     *hookPosY += (*hookSpeed) * (*hookDirection);
     // correct hook's position(+)
@@ -300,6 +350,7 @@ void moveHook(struct Boat *boat) {
     }
     else if (*hookPosY <= 0) {
         *isFishing = false;
+        *hookDragFish = false;
         *hookPosY = 0;
         *hookDirection = 0;     /* redundant operation, but just in case */
     }
