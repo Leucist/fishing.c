@@ -209,6 +209,7 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
     // iterates through the game map and checks what sign must be drawn
     for (int y=0; y < HEIGHT; y++) {
         printf("\t|");
+        if (y == SKY_HEIGHT + ((HEIGHT - SKY_HEIGHT) / START_AMOUNT_FISH) * (fishNum + 1)) fishNum++;
         for (int x=0; x < WIDTH; x++) {
             // можно попробовать такой вариант с массивом объектов
             // printf("%", gameObjects[gameMap[y][x]]);
@@ -236,7 +237,6 @@ void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat
                     //     printf("%c", fishes[0].obj.image[i]);
                     // }
                     printf("%s", fishes[fishNum].obj.image);
-                    fishNum++;
                     x += fishes[0].obj.length - 1;
                     break;
                 // hook
@@ -278,14 +278,14 @@ void checkFishCaught(struct Boat *boat, struct Fish fishes[]) {
         // <left, right, into, under> - fishPos : hookPos
 
         // if fish is above the hook
-        // if (fishes[i].obj.posY < boat->hookPosY) {
-        //     if (fishes[i].obj.posX + fishes[i].obj.length == boat -> obj.posX+1 ||
-        //     fishes[i].obj.posX + fishes[i].obj.length-2 == boat -> obj.posX ||
-        //     fishes[i].obj.posX == boat->obj.posX+1 ||
-        //     fishes[i].obj.posX == boat->obj.posX) {
-        //         turnFish(fishes, i);
-        //     }
-        // }
+        if (fishes[i].obj.posY < boat->hookPosY) {
+            if (fishes[i].obj.posX + fishes[i].obj.length == boat -> obj.posX+1 ||
+            fishes[i].obj.posX + fishes[i].obj.length-2 == boat -> obj.posX ||
+            fishes[i].obj.posX == boat->obj.posX+1 ||
+            fishes[i].obj.posX == boat->obj.posX) {
+                turnFish(fishes, i);
+            }
+        }
         // if fish is on the same y as hook
         if (fishes[i].obj.posY == boat->hookPosY) {
             // if fish collides with the hook
