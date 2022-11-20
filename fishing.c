@@ -17,11 +17,13 @@ const int WIDTH = 40;
 const int HEIGHT = 31;
 // and its components separetely
 const int SKY_HEIGHT = 1;
-const int START_AMOUNT_FISH = 3;
+const int START_AMOUNT_FISH = 5;
 // Game controls instruction
-char INSTRUCTION[] = "Press the 'A' and 'D' buttons to move the\n\tboat left and right accordingly. Press 'E'\n\tto exit.";
+char INSTRUCTION[] = "> How to play?\n\t- Hold the 'A' and 'D' buttons to\n\tmove the boat left and right accordingly,\n\tpress 'F' to throw down a hook. If it touches a fish - you catch it!\n\t-Press 'E' to exit.";
+char CONTROLS[] = "'a', 'd' - Move boat left, right\n\t'f' - Throw/pull the hook\n\t'e' - Exit game";
+char HELP_CONTROLS[] = "[Hold 'h' to show the controls]\n\n";
+char MESSAGE[80];
 
-int AAA = 0, B = 0;
 // - - - INITIALIZING STRUCTURES
 struct GameObject {
     // unsigned int length : 2;
@@ -49,8 +51,8 @@ struct Boat {
 
 // declaring functions
 void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
-void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
-void moveHook(struct Boat*);
+void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat, int score);
+void moveHook(struct Boat*, int *score);
 void moveBoat(struct Boat*);
 void moveFish(struct Fish fishes[]);
 void turnFish(struct Fish fishes[], int);
@@ -62,7 +64,7 @@ int getche();
 
 int main() {
     int gameMap[HEIGHT][WIDTH];
-    int keyPressedNumber;
+    int keyPressedNumber, score=0;
     // water depth divided by amount of fishes for their future uniform distribution (and to ensure that fishes will not spawn one insise another)
     int waterPart = (HEIGHT - SKY_HEIGHT) / START_AMOUNT_FISH;
 
@@ -107,10 +109,11 @@ int main() {
     ts.tv_nsec = 300000000; // 300 ms
 
 
+    strcpy(MESSAGE, HELP_CONTROLS);
     GAME_RUNNING = true;
     while (GAME_RUNNING) {
         fillGameMap(gameMap, fishes, boat);
-        drawGame(gameMap, fishes, boat);
+        drawGame(gameMap, fishes, boat, score);
 
         // gets number of the key user pressed, 0 if none
         keyPressedNumber = getUserInput(ts);
@@ -125,10 +128,18 @@ int main() {
 
         // fish if fishing :)
         if (boat.isFishing) {
-            moveHook(&boat);
+            moveHook(&boat, &score);
             checkFishCaught(&boat, fishes);
+            // if player wins
+            if (score == START_AMOUNT_FISH) {
+                nanosleep(&ts, &ts);
+                printf("\e[1;1H\e[2J");
+                printf("CONGRATULATIONS!\nYou won :D\n");
+                GAME_RUNNING = false;
+            }
         }
     }
+    printf("\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
 
     return 0;
 }
@@ -182,26 +193,12 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
 }
 
 // - - - draws the game screen
-void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat) {
+void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat, int score) {
     // clears the console
     printf("\e[1;1H\e[2J");
     // prints INSTRUCTION
-    printf("\t%s\n", INSTRUCTION);
-
-    // printf("\n\t");  /* splits the instruction into equal lines (==WIDTH) */
-    // for (int i = 0; i < strlen(INSTRUCTION); i++) {
-    //     if ((i + 1) % WIDTH == 0)
-    //         printf("\n\t");
-    //     printf("%c", INSTRUCTION[i]);
-    // }
-
-    printf("drawGame is started in %d time\n", AAA++);
-    for (int i=0; i < START_AMOUNT_FISH; i++) {
-        printf("\tFish #%d\t posX: %d, Direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
-    }
-    // for (int i=0; i < START_AMOUNT_FISH; i++) {
-    //     printf("Fish %d posX: %d, direction: %d\n", i+1, fishes[i].obj.posX, fishes[i].obj.direction);
-    // }
+    printf("\t%s\n", MESSAGE);
+    printf("\t> Score: %d", score);
 
     int fishNum = 0;
     // skips 4 lines as an indent
@@ -335,7 +332,7 @@ void moveFish(struct Fish fishes[]) {
     }
 }
 
-void moveHook(struct Boat *boat) {
+void moveHook(struct Boat *boat, int *score) {
     int *hookPosY       = &boat -> hookPosY,
         *hookSpeed      = &boat -> hookSpeed,
         *hookDirection  = &boat -> hookDirection;
@@ -349,6 +346,7 @@ void moveHook(struct Boat *boat) {
         *hookDirection = -1;
     }
     else if (*hookPosY <= 0) {
+        if (*hookDragFish) *score += 1;
         *isFishing = false;
         *hookDragFish = false;
         *hookPosY = 0;
@@ -390,7 +388,7 @@ void handleUserInput(int keyPressedNumber, struct Boat *boat) {
         case 101:                       /* 'e' key */
             // clears the console
             printf("\e[1;1H\e[2J");
-            printf("'E' button was pressed. Exiting.\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
+            printf("'E' button was pressed. Exiting.\n");
             GAME_RUNNING = false;
             break;
         case 102:                       /* 'f' key */
@@ -405,8 +403,12 @@ void handleUserInput(int keyPressedNumber, struct Boat *boat) {
                 *hookDirection    = -1;     // up
             }
             break;
+        case 104:                       /* 'h' key */
+            strcpy(MESSAGE, CONTROLS);
+            break;
         default:                        /* None or other key was pressed */
             *direction = 0;     /* idle */
+            strcpy(MESSAGE, HELP_CONTROLS);
     }
 }
 
