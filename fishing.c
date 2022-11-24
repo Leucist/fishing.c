@@ -167,12 +167,13 @@ void menu() {
             printf("|\n");
         }
         if (getche() == 27 && getche() == 91) {
-            keyPressedNumber = getche();
-            if (keyPressedNumber == 65) {       /* up arrow */
-                buttons[0].crntBtn -= 1;
-            }
-            else if (keyPressedNumber == 66) {  /* down arrow */
-                buttons[0].crntBtn += 1;
+            switch(getche()) {
+                case 65:                        /* up arrow */
+                    buttons[0].crntBtn -= 1;
+                    break;
+                case 66:                        /* down arrow */
+                    buttons[0].crntBtn += 1;
+                    break;
             }
         }
         for (int i = 0; i < btnsAmount; i++) buttons[i].isChosen = false;
