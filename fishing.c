@@ -48,8 +48,19 @@ struct Boat {
          hookDragFish;
 };
 
+struct Button {
+    unsigned int crntBtn : 2; /* quick workaround~ :P */
+    int length,
+        posY;
+    bool isChosen;
+    char name[8];
+};
+
 
 // declaring functions
+void start();
+void menu();
+void game();
 void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
 void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat, int score);
 void moveHook(struct Boat*, int *score);
@@ -63,6 +74,113 @@ int getche();
 
 
 int main() {
+    start();
+    menu();
+    game();
+    return 0;
+}
+
+void start() {
+    // clears the console
+    printf("\e[1;1H\e[2J");
+    printf("--------^----------------Please, adjust your terminal size so \n\t|\t\tthat you can see both ends of the arrow.\n");
+    for (int i = 0; i < HEIGHT+8; i++) {
+        if (i == HEIGHT / 2 - 1) {
+            printf("\t|\t\t[ If you see both arrow ends\t]\n");
+            continue;
+        }
+        else if (i == HEIGHT / 2) {
+            printf("\t|\t\t[ screen is adjusted properly.\t]\n");
+            continue;
+        }
+        else if (i == HEIGHT / 2 + 1) {
+            printf("\t|\t\t[ Press any button to continue.\t]\n");
+            continue;
+        }
+        printf("\t|\n");
+    }
+    printf("--------v---------------- - end of the arrow. Now you see it :D But do you see the start?\n");
+    if (getche()) printf("Here we go :D");
+}
+
+void menu() {
+    int keyPressedNumber, btnsAmount = 4;
+    char gap;
+    // initialises buttons
+    struct Button buttons[btnsAmount];
+    buttons[0].crntBtn = 0;
+    // init btn start
+    strcpy(buttons[0].name, "START");
+    buttons[0].posY = HEIGHT / 2 - 4;
+    buttons[0].length = 5;
+    buttons[0].isChosen = true;
+    // init btn records
+    strcpy(buttons[1].name, "RECORDS");
+    buttons[1].posY = HEIGHT / 2 - 2;
+    buttons[1].length = 7;
+    buttons[1].isChosen = false;
+    // init btn settings
+    strcpy(buttons[2].name, "SETTINGS");
+    buttons[2].posY = HEIGHT / 2;
+    buttons[2].length = 8;
+    buttons[2].isChosen = false;
+    // init btn exit
+    strcpy(buttons[3].name, "EXIT");
+    buttons[3].posY = HEIGHT / 2 + 2;
+    buttons[3].length = 4;
+    buttons[3].isChosen = false;
+
+    GAME_RUNNING = true;
+    while (GAME_RUNNING) {
+        // clears the console
+        printf("\e[1;1H\e[2J");
+        printf("\t[ Use up and down arrows to switch menu options ]\n");
+        // skips 4 lines as an indent
+        printf("\n\n\n\n");
+        // draws the game menu
+        printf("\t|");
+        for (int x=0; x < WIDTH; x++) {
+            if (x == WIDTH / 2 - 1) {
+                printf("\\_/");
+                x += 3;
+            }
+            printf("_");
+        }
+        printf("|\n");
+        for (int y=1; y < HEIGHT; y++) {
+            printf("\t|");
+            for (int x=0; x < WIDTH; x++) {
+                if (x == WIDTH / 2 - 4) {
+                    for (int i = 0; i < btnsAmount; i++) {
+                        if (y == buttons[i].posY) {
+                            if (buttons[i].isChosen) printf(">");
+                            else printf("░");
+                            printf("%s", buttons[i].name);
+                            if (buttons[i].isChosen) printf("<");
+                            else printf("░");
+                            x += buttons[i].length+2;
+                        }
+                    }
+                }
+                printf("░");
+            }
+            printf("|\n");
+        }
+        if (getche() == 27 && getche() == 91) {
+            keyPressedNumber = getche();
+            if (keyPressedNumber == 65) {       /* up arrow */
+                buttons[0].crntBtn -= 1;
+            }
+            else if (keyPressedNumber == 66) {  /* down arrow */
+                buttons[0].crntBtn += 1;
+            }
+        }
+        for (int i = 0; i < btnsAmount; i++) buttons[i].isChosen = false;
+        buttons[buttons[0].crntBtn].isChosen = true;
+    }
+}
+
+void game() {
     int gameMap[HEIGHT][WIDTH];
     int keyPressedNumber, score=0;
     // water depth divided by amount of fishes for their future uniform distribution (and to ensure that fishes will not spawn one insise another)
@@ -140,8 +258,6 @@ int main() {
         }
     }
     printf("\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
-
-    return 0;
 }
 
 //- - - fills the gameMap
