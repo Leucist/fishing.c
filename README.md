@@ -1,5 +1,5 @@
 # fishing.c
-[![Version](https://img.shields.io/badge/version-1.0-green.svg)](https://github.com/Leucist/fishing.c)
+[![Version](https://img.shields.io/badge/version-1.1-green.svg)](https://github.com/Leucist/fishing.c)
 [![author](https://img.shields.io/badge/author-leucist-blue)](https://github.com/Leucist/)\
 It is a simple console game I made for skill development and enterntainment :)\
 <br/>
