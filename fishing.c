@@ -12,6 +12,8 @@
 
 // - - - SETTING GLOBAL VARIABLES
 bool GAME_RUNNING;
+char PLAYER[10] = "player";
+const int TOP_SIZE = 20;    // actual amount*2~
 // sets width and height of the game area
 const int WIDTH = 40;
 const int HEIGHT = 31;
@@ -61,8 +63,10 @@ struct Button {
 void start();
 void menu();
 void game();
+void menuButtonHandler(struct Button buttons[], int btnsAmount);
+void records(char, int);
 void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
-void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat, int score);
+void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat, int score, int timer);
 void moveHook(struct Boat*, int *score);
 void moveBoat(struct Boat*);
 void moveFish(struct Fish fishes[]);
@@ -76,7 +80,6 @@ int getche();
 int main() {
     start();
     menu();
-    game();
     return 0;
 }
 
@@ -100,7 +103,25 @@ void start() {
         printf("\t|\n");
     }
     printf("--------v---------------- - end of the arrow. Now you see it :D But do you see the start?\n");
-    if (getche()) printf("Here we go :D");
+    if (getche()) records('c', 0);  /* creates records file if none */
+}
+
+void drawMenuHeader() {
+    // clears the console
+    printf("\e[1;1H\e[2J");
+    printf("\t[ Use up and down arrows to switch menu options ]\n");
+    // skips 4 lines as an indent
+    printf("\n\n\n\n");
+    // draws the game menu
+    printf("\t|");
+    for (int x=0; x < WIDTH; x++) {
+        if (x == WIDTH / 2 - 1) {
+            printf("\\_/");
+            x += 3;
+        }
+        printf("_");
+    }
+    printf("|\n");
 }
 
 void menu() {
@@ -130,43 +151,40 @@ void menu() {
     buttons[3].length = 4;
     buttons[3].isChosen = false;
 
+    int nextBtn;
     GAME_RUNNING = true;
     while (GAME_RUNNING) {
-        // clears the console
-        printf("\e[1;1H\e[2J");
-        printf("\t[ Use up and down arrows to switch menu options ]\n");
-        // skips 4 lines as an indent
-        printf("\n\n\n\n");
-        // draws the game menu
-        printf("\t|");
-        for (int x=0; x < WIDTH; x++) {
-            if (x == WIDTH / 2 - 1) {
-                printf("\\_/");
-                x += 3;
-            }
-            printf("_");
-        }
-        printf("|\n");
+        nextBtn = 0;
+        drawMenuHeader();
         for (int y=1; y < HEIGHT; y++) {
             printf("\t|");
-            for (int x=0; x < WIDTH; x++) {
-                if (x == WIDTH / 2 - 4) {
-                    for (int i = 0; i < btnsAmount; i++) {
-                        if (y == buttons[i].posY) {
-                            if (buttons[i].isChosen) printf(">");
-                            else printf("░");
-                            printf("%s", buttons[i].name);
-                            if (buttons[i].isChosen) printf("<");
-                            else printf("░");
-                            x += buttons[i].length+2;
+            // skips line if it doesn't contain the next button
+            if (y != buttons[nextBtn].posY) {
+                for (int x=0; x < WIDTH; x++) printf("░");
+            }
+            else {
+                for (int x=0; x < WIDTH; x++) {
+                    if (x == WIDTH / 2 - 4) {
+                        for (int i = 0; i < btnsAmount; i++) {
+                            if (y == buttons[i].posY) {
+                                if (buttons[i].isChosen) printf(">");
+                                else printf("░");
+                                printf("%s", buttons[i].name);
+                                if (buttons[i].isChosen) printf("<");
+                                else printf("░");
+                                x += buttons[i].length+2;
+                            }
                         }
                     }
+                    printf("░");
                 }
-                printf("░");
+                nextBtn++;
             }
             printf("|\n");
         }
-        if (getche() == 27 && getche() == 91) {
+        keyPressedNumber = getche();
+        if (keyPressedNumber == 10) menuButtonHandler(buttons, btnsAmount);
+        else if (keyPressedNumber == 27 && getche() == 91) {
             switch(getche()) {
                 case 65:                        /* up arrow */
                     buttons[0].crntBtn -= 1;
@@ -175,17 +193,128 @@ void menu() {
                     buttons[0].crntBtn += 1;
                     break;
             }
+            for (int i = 0; i < btnsAmount; i++) buttons[i].isChosen = false;
+            buttons[buttons[0].crntBtn].isChosen = true;
         }
-        for (int i = 0; i < btnsAmount; i++) buttons[i].isChosen = false;
-        buttons[buttons[0].crntBtn].isChosen = true;
+    }
+}
+
+void menuButtonHandler(struct Button buttons[], int btnsAmount) {
+    if (buttons[0].isChosen) {
+        game();
+    }
+    else if (buttons[1].isChosen) {
+        records('r', 0);
+    }
+    else if (buttons[2].isChosen) {
+        GAME_RUNNING = false;
+    }
+    else if (buttons[3].isChosen) {
+        GAME_RUNNING = false;
+    }
+}
+
+void drawRecords(FILE *recordsFile, char rline[TOP_SIZE][10]) {
+    int rlineNum = 0;
+    int middle = HEIGHT / 2 - TOP_SIZE / 4;
+    // while () {} well, there was a while loop. Redundant without anim's
+    drawMenuHeader();
+    for (int y=1; y < HEIGHT; y++) {
+        printf("\t|");
+        // if (y == middle - 1) {
+        //     printf("|Pos:        Time score:|");
+        // }
+        // skips line if it doesn't contain the record line
+        if (y != middle + rlineNum / 2) {
+            for (int x=0; x < WIDTH; x++) printf("░");
+        }
+        else {
+            for (int x=0; x < WIDTH; x++) {
+                if (x == WIDTH / 2 - 13) {
+                    fscanf(recordsFile, "%s", rline[rlineNum]);
+                    fscanf(recordsFile, "%s", rline[rlineNum+1]);
+                    printf("|%2d.%10s %10s|", rlineNum/2+1, rline[rlineNum], rline[rlineNum+1]);
+                    rlineNum = rlineNum < (TOP_SIZE - 2) ? rlineNum+=2 : 0;
+                    x += 26;
+                }
+                printf("░");
+            }
+        }
+        printf("|\n");
+    }
+    printf("\tPress any key to return to the menu >\n");
+    getche();
+}
+
+void records(char fmode, int timer) {
+    FILE *recordsFile;
+    char rline[TOP_SIZE][10];
+    if (fmode == 'c') {
+        recordsFile = fopen("records.txt", "a");
+        fclose(recordsFile);
+        recordsFile = fopen("records.txt", "r+");
+        if (getc(recordsFile) == EOF) {
+            for (int i = 0; i < TOP_SIZE; i++) {
+                switch(i%2) {
+                    case 0:
+                        fprintf(recordsFile, "...\n");
+                        break;
+                    case 1:
+                        fprintf(recordsFile, "0\n");
+                        break;
+                }
+            }
+        }
+        fclose(recordsFile);
+        return;
+    }
+    recordsFile = fopen("records.txt", "r");
+    if (fmode == 'r') {
+        drawRecords(recordsFile, rline);
+    }
+    // changes leaderboard if needed
+    else if (fmode == 'w') {
+        int offset;
+        bool recordsCorrected = false;
+        for (int i = 0; i < TOP_SIZE; i++) {
+            offset = 0;
+            fscanf(recordsFile, "%s", rline[i]);
+            printf("New line nr.%d:\t%s\n", i, rline[i]);
+            // if it's the timeValue line
+            if (i%2==1 && !recordsCorrected){
+                // if prev.record is slower than a new one or r.is empty
+                if (atoi(rline[i]) > timer || rline[i][0] == '0') {
+                    printf("\tTimer is\t\t%d\n", timer);
+                    if (i != TOP_SIZE - 1) {
+                        // moves down the previous leader
+                        strcpy(rline[i+1], rline[i-1]);
+                        strcpy(rline[i+2], rline[i]);
+                        offset = 2;
+                    }
+                    // inserts new data
+                    strcpy(rline[i-1], PLAYER);
+                    sprintf(rline[i], "%d", timer);
+                    recordsCorrected = true;
+                    i += offset;
+                }
+            }
+        }
+        fclose(recordsFile);
+        recordsFile = fopen("records.txt", "w");
+        for (int i = 0; i < TOP_SIZE; i++) {
+            printf("%s\n", rline[i]);
+            fprintf(recordsFile, "%s\n", rline[i]);
+        }
+        fclose(recordsFile);
     }
 }
 
 void game() {
     int gameMap[HEIGHT][WIDTH];
-    int keyPressedNumber, score=0;
+    int keyPressedNumber, timer=0, score=0;
     // water depth divided by amount of fishes for their future uniform distribution (and to ensure that fishes will not spawn one insise another)
     int waterPart = (HEIGHT - SKY_HEIGHT) / START_AMOUNT_FISH;
+    time_t timerStart;
 
     // seeds rand()
     srand(time(NULL));
@@ -194,7 +323,7 @@ void game() {
     struct Boat boat;
     boat.isFishing      = false;
     boat.hookDragFish   = false;    /* doesn't drag any fish */
-    boat.hookDirection  = 0;    /* hook doesn't move */
+    boat.hookDirection  = 0;        /* hook doesn't move */
     boat.hookPosY       = 0;
     boat.hookSpeed      = 1;
     boat.obj.speed      = 1;
@@ -227,12 +356,13 @@ void game() {
     ts.tv_sec = 0;          // 0 s
     ts.tv_nsec = 300000000; // 300 ms
 
-
+    timerStart = time(NULL);
     strcpy(MESSAGE, HELP_CONTROLS);
     GAME_RUNNING = true;
+
     while (GAME_RUNNING) {
         fillGameMap(gameMap, fishes, boat);
-        drawGame(gameMap, fishes, boat, score);
+        drawGame(gameMap, fishes, boat, score, timer);
 
         // gets number of the key user pressed, 0 if none
         keyPressedNumber = getUserInput(ts);
@@ -244,6 +374,8 @@ void game() {
         moveBoat(&boat);
         // moves each fish
         moveFish(fishes);
+        // calculates the game time spent
+        timer = time(NULL) - timerStart;
 
         // fish if fishing :)
         if (boat.isFishing) {
@@ -253,12 +385,18 @@ void game() {
             if (score == START_AMOUNT_FISH) {
                 nanosleep(&ts, &ts);
                 printf("\e[1;1H\e[2J");
-                printf("CONGRATULATIONS!\nYou won :D\n");
+                printf("CONGRATULATIONS!\nYou won :D\n\n");
+                // may be fancy edited later, for now uses a quick hack~
+                printf("Type your name: ");
+                scanf("%10s", &PLAYER);
+
+                records('w', timer);
+
                 GAME_RUNNING = false;
             }
         }
     }
-    printf("\nThank you for playing my game :)\n\n(c) Leucist - https://github.com/Leucist\n\n");
+    printf("\nThank you for playing my game, %s :)\n\n(c) Leucist - https://github.com/Leucist\n\n", PLAYER);
 }
 
 //- - - fills the gameMap
@@ -310,12 +448,12 @@ void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat b
 }
 
 // - - - draws the game screen
-void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat, int score) {
+void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat boat, int score, int timer) {
     // clears the console
     printf("\e[1;1H\e[2J");
     // prints INSTRUCTION
     printf("\t%s\n", MESSAGE);
-    printf("\t> Score: %d", score);
+    printf("\t> Score: %d\t\t\tTime: %ds.", score, timer);
 
     int fishNum = 0;
     // skips 4 lines as an indent
