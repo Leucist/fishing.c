@@ -19,7 +19,7 @@ const int WIDTH = 40;
 const int HEIGHT = 31;
 // and its components separetely
 const int SKY_HEIGHT = 1;
-const int START_AMOUNT_FISH = 5;
+int START_AMOUNT_FISH = 5;
 // Game controls instruction
 char INSTRUCTION[] = "> How to play?\n\t- Hold the 'A' and 'D' buttons to\n\tmove the boat left and right accordingly,\n\tpress 'F' to throw down a hook. If it touches a fish - you catch it!\n\t-Press 'E' to exit.";
 char CONTROLS[] = "'a', 'd' - Move boat left, right\n\t'f' - Throw/pull the hook\n\t'e' - Exit game";
@@ -61,9 +61,9 @@ struct Button {
 
 // declaring functions
 void start();
-void menu();
+void menu(bool*);
 void game();
-void menuButtonHandler(struct Button buttons[], int btnsAmount);
+void menuButtonHandler(struct Button buttons[], int btnsAmount, bool*);
 void records(char, int);
 void fillGameMap(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat);
 void drawGame(int gameMap[HEIGHT][WIDTH], struct Fish fishes[], struct Boat, int score, int timer);
@@ -79,7 +79,10 @@ int getche();
 
 int main() {
     start();
-    menu();
+    bool exitGame = false;
+    while (!exitGame) {
+        menu(&exitGame);
+    }
     return 0;
 }
 
@@ -124,7 +127,7 @@ void drawMenuHeader() {
     printf("|\n");
 }
 
-void menu() {
+void menu(bool *exitGame) {
     int keyPressedNumber, btnsAmount = 4;
     char gap;
     // initialises buttons
@@ -152,8 +155,7 @@ void menu() {
     buttons[3].isChosen = false;
 
     int nextBtn;
-    GAME_RUNNING = true;
-    while (GAME_RUNNING) {
+    while (!*exitGame) {
         nextBtn = 0;
         drawMenuHeader();
         for (int y=1; y < HEIGHT; y++) {
@@ -183,7 +185,7 @@ void menu() {
             printf("|\n");
         }
         keyPressedNumber = getche();
-        if (keyPressedNumber == 10) menuButtonHandler(buttons, btnsAmount);
+        if (keyPressedNumber == 10) menuButtonHandler(buttons, btnsAmount, exitGame);
         else if (keyPressedNumber == 27 && getche() == 91) {
             switch(getche()) {
                 case 65:                        /* up arrow */
@@ -199,7 +201,35 @@ void menu() {
     }
 }
 
-void menuButtonHandler(struct Button buttons[], int btnsAmount) {
+void settings() {
+    // int middle = (HEIGHT - SKY_HEIGHT) / 2 - 2,
+    //     sLineNum = 0;
+    // bool settingsRunning = true;
+    // while (settingsRunning) {
+    //     drawMenuHeader();
+    //     for (int y=1; y < HEIGHT; y++) {
+    //         printf("\t|");
+    //         if (y != middle + sLineNum * 2) {
+    //             for (int x=0; x < WIDTH; x++) printf("░");
+    //         }
+    //         else {
+    //             for (int x=0; x < WIDTH; x++) {
+    //                 if (x == WIDTH / 2 - 13) {
+    //                     printf("|%2d.%10s %10s|", rlineNum/2+1, rline[rlineNum], rline[rlineNum+1]);
+    //                     rlineNum = rlineNum < (TOP_SIZE - 2) ? rlineNum+=2 : 0;
+    //                     x += 26;
+    //                 }
+    //                 printf("░");
+    //             }
+    //             sLineNum++;
+    //         }
+    //         printf("|\n");
+    //     }
+    //
+    // }
+}
+
+void menuButtonHandler(struct Button buttons[], int btnsAmount, bool *exitGame) {
     if (buttons[0].isChosen) {
         game();
     }
@@ -207,16 +237,16 @@ void menuButtonHandler(struct Button buttons[], int btnsAmount) {
         records('r', 0);
     }
     else if (buttons[2].isChosen) {
-        GAME_RUNNING = false;
+        settings();
     }
     else if (buttons[3].isChosen) {
-        GAME_RUNNING = false;
+        *exitGame = true;
     }
 }
 
 void drawRecords(FILE *recordsFile, char rline[TOP_SIZE][10]) {
     int rlineNum = 0;
-    int middle = HEIGHT / 2 - TOP_SIZE / 4;
+    int middle = (HEIGHT - SKY_HEIGHT) / 2 - TOP_SIZE / 4;
     // while () {} well, there was a while loop. Redundant without anim's
     drawMenuHeader();
     for (int y=1; y < HEIGHT; y++) {
@@ -279,12 +309,10 @@ void records(char fmode, int timer) {
         for (int i = 0; i < TOP_SIZE; i++) {
             offset = 0;
             fscanf(recordsFile, "%s", rline[i]);
-            printf("New line nr.%d:\t%s\n", i, rline[i]);
             // if it's the timeValue line
             if (i%2==1 && !recordsCorrected){
                 // if prev.record is slower than a new one or r.is empty
                 if (atoi(rline[i]) > timer || rline[i][0] == '0') {
-                    printf("\tTimer is\t\t%d\n", timer);
                     if (i != TOP_SIZE - 1) {
                         // moves down the previous leader
                         strcpy(rline[i+1], rline[i-1]);
