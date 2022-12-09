@@ -202,6 +202,17 @@ void menu(bool *exitGame) {
 }
 
 void settings() {
+    printf("\e[1;1H\e[2J");
+    printf("\n\n\tHere could be a settings page\n");
+    printf("\t..where you'd be able to change\n");
+    printf("\t..fish amount or username.\n");
+    printf("\n\tBut I've already tried and\n");
+    printf("\t..implemented things I wanted to.\n");
+    printf("\tI'm bored with this code for now\n");
+    printf("\t..if you want, you can easily add\n");
+    printf("\t..such a thing.\n");
+    printf("\n\tPress any key to go back to the menu: ");
+    getche();
     // int middle = (HEIGHT - SKY_HEIGHT) / 2 - 2,
     //     sLineNum = 0;
     // bool settingsRunning = true;
