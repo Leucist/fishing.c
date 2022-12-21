@@ -58,6 +58,12 @@ struct Button {
     char name[8];
 };
 
+typedef struct list {
+    char ch[10];
+    struct list *next;
+} Elem;
+typedef Elem* List;
+
 
 // declaring functions
 void start();
@@ -73,8 +79,11 @@ void moveFish(struct Fish fishes[]);
 void turnFish(struct Fish fishes[], int);
 void handleUserInput(int, struct Boat*);
 void checkFishCaught(struct Boat*, struct Fish fishes[]);
+void insertElement(List, List, List);
+void eraseList(List);
 int getUserInput(struct timespec);
 int getche();
+List getElement(List, int);
 
 
 int main() {
@@ -84,6 +93,12 @@ int main() {
         menu(&exitGame);
     }
     return 0;
+}
+
+List getElement(List l1, int n) {
+    List elementN = l1;
+    for (int i = 0; i < n; i++, elementN = elementN -> next);
+    return elementN;
 }
 
 void start() {
@@ -255,10 +270,11 @@ void menuButtonHandler(struct Button buttons[], int btnsAmount, bool *exitGame) 
     }
 }
 
-void drawRecords(FILE *recordsFile, char rline[TOP_SIZE][10]) {
+void drawRecords(FILE *recordsFile, List rLineStart) {
     int rlineNum = 0;
     int middle = (HEIGHT - SKY_HEIGHT) / 2 - TOP_SIZE / 4;
-    // while () {} well, there was a while loop. Redundant without anim's
+    List rline = rLineStart;
+    // while () {} well, there was a while loop. Redundant without anim-s
     drawMenuHeader();
     for (int y=1; y < HEIGHT; y++) {
         printf("\t|");
@@ -272,11 +288,18 @@ void drawRecords(FILE *recordsFile, char rline[TOP_SIZE][10]) {
         else {
             for (int x=0; x < WIDTH; x++) {
                 if (x == WIDTH / 2 - 13) {
-                    fscanf(recordsFile, "%s", rline[rlineNum]);
-                    fscanf(recordsFile, "%s", rline[rlineNum+1]);
-                    printf("|%2d.%10s %10s|", rlineNum/2+1, rline[rlineNum], rline[rlineNum+1]);
+                    // creates temp list
+                    List nextLine = malloc(sizeof(Elem));
+                    rline -> next = nextLine;
+                    // reads two lines from records.txt
+                    fscanf(recordsFile, "%s", rline -> ch);
+                    fscanf(recordsFile, "%s", nextLine -> ch);
+
+                    printf("|%2d.%10s %10s|", rlineNum/2+1, rline -> ch, nextLine -> ch);
                     rlineNum = rlineNum < (TOP_SIZE - 2) ? rlineNum+=2 : 0;
                     x += 26;
+                    nextLine->next = malloc(sizeof(Elem));
+                    rline = nextLine -> next;
                 }
                 printf("░");
             }
@@ -289,7 +312,7 @@ void drawRecords(FILE *recordsFile, char rline[TOP_SIZE][10]) {
 
 void records(char fmode, int timer) {
     FILE *recordsFile;
-    char rline[TOP_SIZE][10];
+    List rLineStart = malloc(sizeof(Elem));
     if (fmode == 'c') {
         recordsFile = fopen("records.txt", "a");
         fclose(recordsFile);
@@ -307,45 +330,60 @@ void records(char fmode, int timer) {
             }
         }
         fclose(recordsFile);
+        eraseList(rLineStart);
         return;
     }
     recordsFile = fopen("records.txt", "r");
     if (fmode == 'r') {
-        drawRecords(recordsFile, rline);
+        drawRecords(recordsFile, rLineStart);
     }
     // changes leaderboard if needed
     else if (fmode == 'w') {
-        int offset;
         bool recordsCorrected = false;
-        for (int i = 0; i < TOP_SIZE; i++) {
-            offset = 0;
-            fscanf(recordsFile, "%s", rline[i]);
+        List rline = rLineStart;
+        for (int i = 0; i < TOP_SIZE; i++, rline = rline -> next) {
+            fscanf(recordsFile, "%s", rline -> ch);
             // if it's the timeValue line
             if (i%2==1 && !recordsCorrected){
                 // if prev.record is slower than a new one or r.is empty
-                if (atoi(rline[i]) > timer || rline[i][0] == '0') {
+                if (atoi(rline -> ch) > timer || rline -> ch[0] == '0') {
+
+                    // sets the couple of the new record
+                    char timerChar[10];
+                    sprintf(timerChar, "%d", timer);
+                    List newRecordUName = malloc(sizeof(Elem));
+                    List newRecordUTime = malloc(sizeof(Elem));
+                    newRecordUName -> next = newRecordUTime;
+                    strcpy(newRecordUName -> ch, PLAYER);
+                    strcpy(newRecordUTime -> ch, timerChar);
+
+                    // then append element either way:
                     if (i != TOP_SIZE - 1) {
                         // moves down the previous leader
-                        strcpy(rline[i+1], rline[i-1]);
-                        strcpy(rline[i+2], rline[i]);
-                        offset = 2;
+                        insertElement(newRecordUTime, rline,
+                                      getElement(rLineStart, i-1));
+                        i += 2;
                     }
-                    // inserts new data
-                    strcpy(rline[i-1], PLAYER);
-                    sprintf(rline[i], "%d", timer);
+                    else {
+                        insertElement(newRecordUTime, NULL,
+                                      getElement(rLineStart, i-1));
+                    }
+
                     recordsCorrected = true;
-                    i += offset;
                 }
             }
         }
         fclose(recordsFile);
+        eraseList(rline);
+        List rline2 = rLineStart;
         recordsFile = fopen("records.txt", "w");
-        for (int i = 0; i < TOP_SIZE; i++) {
-            printf("%s\n", rline[i]);
-            fprintf(recordsFile, "%s\n", rline[i]);
+        for (int i = 0; i < TOP_SIZE; i++, rline2 = rline2 -> next) {
+            fprintf(recordsFile, "%s\n", rline2 -> ch);
         }
         fclose(recordsFile);
+        eraseList(rline2);
     }
+    eraseList(rLineStart);
 }
 
 void game() {
@@ -704,6 +742,17 @@ void handleUserInput(int keyPressedNumber, struct Boat *boat) {
             *direction = 0;     /* idle */
             strcpy(MESSAGE, HELP_CONTROLS);
     }
+}
+
+void eraseList(List l1) {
+    if (l1 -> next != NULL) eraseList(l1 -> next);
+    free(l1);
+
+}
+
+void insertElement(List l1, List l2, List newElement) {
+    newElement  -> next = l2;
+    l1          -> next = newElement;
 }
 
 int getUserInput(struct timespec ts) {
